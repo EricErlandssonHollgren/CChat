@@ -8,8 +8,20 @@ start(ServerAtom) ->
     % - Spawn a new process which waits for a message, handles it, then loops infinitely
     % - Register this process to ServerAtom
     % - Return the process ID
-    
-    not_implemented.
+    ServerLoop = fun Loop() ->
+        receive
+            {From, Message} ->
+                From ! {ok, Message},
+                Loop();
+            stop ->
+                ok;
+            _Default ->
+                Loop()
+        end
+    end,
+    Pid = spawn(ServerLoop),
+    register(ServerAtom, Pid),
+    Pid.
 
 % Stop the server process registered to the given name,
 % together with any other associated processes
