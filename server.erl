@@ -52,14 +52,6 @@ handle(St, {join, Channel, UserPid}) ->
             {reply, ok, UpdatedState}
     end.
 
-channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->    
-    case lists:member(UserPid, St#channelstate.users) of
-        true -> 
-            spawn(fun() -> broadcast_message(St#channelstate.users, Channel, Nick, Msg, UserPid) end),
-            {reply, ok, St};
-        false -> 
-            {reply, {error, user_not_joined, "User is not in the channel"}, St}
-    end;
 
 channelHandler(St, {leave, UserPid}) ->
     case lists:member(UserPid, St#channelstate.users) of
@@ -94,6 +86,15 @@ channelHandler(St, {join, UserPid}) ->
             io:format("Channel users: ~p~n", [St#channelstate.users]), % This will be one iteration behind. 
             
             {reply, ok, UpdatedState}
+    end;
+
+channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->    
+    case lists:member(UserPid, St#channelstate.users) of
+        true -> 
+            spawn(fun() -> broadcast_message(St#channelstate.users, Channel, Nick, Msg, UserPid) end),
+            {reply, ok, St};
+        false -> 
+            {reply, {error, user_not_joined, "User is not in the channel"}, St}
     end.
 
 broadcast_message(Users, Channel, Nick, Msg, SenderPid) ->

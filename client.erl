@@ -29,12 +29,24 @@ initial_state(Nick, GUIAtom, ServerAtom) ->
 % Join channel
 handle(St, {join, Channel}) ->
     Server = St#client_st.server,
-    R = genserver:request(Server, {join, Channel, self()}),
-    io:format("Client joined channel"),
 
-    % TODO: Implement this function
-    % {reply, ok, St} ;
-    {reply, R, St} ;
+    % Check if server actually exists
+    case whereis(Server) of
+        undefined ->
+            {reply, {error, server_not_reached, "server not reached"}, St};
+        _ ->
+            R = catch(genserver:request(Server, {join, Channel, self()})),
+        
+        % Catch any other exception
+        case R of
+            {'EXIT', _} -> 
+                {reply, {error, server_not_reached, "server not reached"}, St};
+            _ -> 
+                {reply, R, St}
+        end
+    end;
+
+    
 
 % Leave channel
 handle(St, {leave, Channel}) ->
