@@ -52,18 +52,10 @@ handle(St, {join, Channel, UserPid}) ->
             {reply, ok, UpdatedState}
     end.
 
-channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->
-    io:format("Message sent: ~p~n", [Msg]),
-    io:format("Nick: ~p~n", [Nick]),
-    io:format("UserPid: ~p~n", [UserPid]),
-    io:format("Channel: ~p~n", [Channel]),
-    io:format("St: ~p~n", [St]),
-    %show users in channel
-    io:format("Channel users: ~p~n", [St#channelstate.users]), % This will be one iteration behind.
+channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->    
     case lists:member(UserPid, St#channelstate.users) of
         true -> 
-            % User is in the channel, send the message
-            client:handle(St, {message_receive, Channel, Nick, Msg}),
+            spawn(fun() -> broadcast_message(St#channelstate.users, Channel, Nick, Msg, UserPid) end),
             {reply, ok, St};
         false -> 
             {reply, {error, user_not_joined, "User is not in the channel"}, St}
@@ -103,6 +95,12 @@ channelHandler(St, {join, UserPid}) ->
             
             {reply, ok, UpdatedState}
     end.
+
+broadcast_message(Users, Channel, Nick, Msg, SenderPid) ->
+    Receivers = lists:delete(SenderPid, Users),
+    lists:foreach(fun(User) -> 
+            genserver:request(User, {message_receive, Channel, Nick, Msg})
+    end, Receivers).
 
 
     % Distinction work? We can just use Pid and then people can have the same nick for now
