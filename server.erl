@@ -27,6 +27,18 @@ start(ServerAtom) ->
     % - Register this process to ServerAtom
     genserver:start(ServerAtom, initialServerState(), fun handle/2).
 
+handle(St, {leave, Channel, UserPid}) ->
+    case lists:member(Channel, St#serverstate.channels) of
+        true -> 
+            % Channel exists, leave it
+            R = genserver:request(list_to_atom(Channel), {leave, UserPid}), 
+            {reply, R, St};
+        false -> 
+            % Channel does not exists, do nothing
+            {reply, {error, channel_not_found, "Channel does not exist"}, St}
+    end;
+
+
 
 handle(St, {join, Channel, UserPid}) ->
 
@@ -53,6 +65,27 @@ handle(St, {join, Channel, UserPid}) ->
 
             {reply, ok, UpdatedState}
     end.
+
+channelHandler(St, {leave, UserPid}) ->
+    case lists:member(UserPid, St#channelstate.users) of
+        true -> 
+            % User is in the channel, remove it
+            NewUsers = lists:delete(UserPid, St#channelstate.users),
+            UpdatedState = St#channelstate{users = NewUsers}, % Update the state with the new user
+
+            io:format("Channel users: ~p~n", [St#channelstate.users]), % This will be one iteration behind. 
+            case length(St#channelstate.users) of
+                0 -> 
+                    % No users left in the channel, remove it
+                    genserver:stop(self()), % Stop the channel process
+                    {reply, ok, UpdatedState};
+                _ -> 
+                    {reply, ok, UpdatedState}
+            end,
+            {reply, ok, UpdatedState};
+        false -> 
+            {reply, {error, user_not_join, "User is not in the channel"}, St}
+    end;
 
 channelHandler(St, {join, UserPid}) ->
     case lists:member(UserPid, St#channelstate.users) of
