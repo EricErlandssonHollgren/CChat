@@ -56,8 +56,31 @@ handle(St, {join, Channel}) ->
 
 % Leave channel
 handle(St, {leave, Channel}) ->
-    R = genserver:request(list_to_atom(Channel), {leave, Channel, self()}),
-    {reply, R, St} ;
+    Server = list_to_atom(Channel),
+
+    % Check if server actually exists
+    case whereis(Server) of
+        undefined ->
+            {reply, {error, server_not_reached, "server not reached"}, St};
+        _ ->
+            try
+                io:format("we are here"),
+                R = genserver:request(Server, {leave, self()}),
+                case R of
+                    %% Handle other unexpected errors
+                    %% TODO: Check if this should always return server_not_reached??
+                    {EXIT, _} ->
+                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
+                    _ ->
+                        io:format("Non Exit response: ~p~n", [R]),
+                        {reply, R, St}
+                end
+            catch
+                %% Catch timeout specifically
+                throw:timeout_error ->
+                    {reply, {error, server_not_reached, "Server times out"}, St}
+            end
+    end;
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
