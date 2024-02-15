@@ -35,15 +35,20 @@ handle(St, {join, Channel}) ->
         undefined ->
             {reply, {error, server_not_reached, "server not reached"}, St};
         _ ->
-            R = catch(genserver:request(Server, {join, Channel, self()})),
-        
-        % Catch any other exception
-        case R of
-            {'EXIT', _} -> 
-                {reply, {error, server_not_reached, "server not reached"}, St};
-            _ -> 
-                {reply, R, St}
-        end
+            try
+                R = genserver:request(Server, {join, Channel, self()}),
+                case R of
+                    %% Handle other unexpected exits
+                    {EXIT, _} ->
+                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
+                    _ ->
+                        {reply, R, St}
+                end
+            catch
+                %% Catch timeout specifically
+                throw:timeout_error ->
+                    {reply, {error, server_not_reached, "Server times out"}, St}
+            end
     end;
 
     
