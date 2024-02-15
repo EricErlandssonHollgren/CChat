@@ -71,7 +71,7 @@ channelHandler(St, {leave, UserPid}) ->
             end,
             {reply, ok, UpdatedState};
         false -> 
-            {reply, {error, user_not_join, "User is not in the channel"}, St}
+            {reply, {error, user_not_joined, "User is not in the channel"}, St}
     end;
 
 channelHandler(St, {join, UserPid}) ->
