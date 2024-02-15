@@ -38,7 +38,8 @@ handle(St, {join, Channel}) ->
             try
                 R = genserver:request(Server, {join, Channel, self()}),
                 case R of
-                    %% Handle other unexpected exits
+                    %% Handle other unexpected errors
+                    %% TODO: Check if this should always return server_not_reached??
                     {EXIT, _} ->
                         {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
                     _ ->
