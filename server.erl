@@ -102,21 +102,6 @@ broadcast_message(Users, Channel, Nick, Msg, SenderPid) ->
     lists:foreach(fun(User) -> 
             genserver:request(User, {message_receive, Channel, Nick, Msg})
     end, Receivers).
-
-
-    % Distinction work? We can just use Pid and then people can have the same nick for now
-
-    % case lists:member(User, St#serverstate.users) of
-    %     true -> 
-    %         % User already exists, do nothing
-    %         {reply, ok, St};
-    %     false -> 
-    %         % This is where we add users to our state? Maybe do this somewhere else when we first start? 
-    %         NewUsers = [User | St#serverstate.users],
-    %         UpdatedUsersState = St#serverstate{channels = NewUsers}, % Update the state with the new channels
-    %         io:format("This is users: ~p~n", [St#serverstate.users]), % Print a message indicating a client joined the channel 
-    %         {reply, ok, UpdatedUsersState}
-    % end.
     
 % Stop the server process registered to the given name,
 % together with any other associated processes
@@ -126,7 +111,7 @@ stop(ServerAtom) ->
     Pid = whereis(ServerAtom),
 case Pid of
     %ett till case som felhanterar
+    undefined -> ok;
     _ ->
-        unregister(ServerAtom),
-        exit(ServerAtom, normal)
+        genserver:stop(ServerAtom)
 end.

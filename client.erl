@@ -86,8 +86,31 @@ handle(St, {leave, Channel}) ->
 handle(St, {message_send, Channel, Msg}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
-    R = genserver:request(list_to_atom(Channel), {message_send, Channel, St#client_st.nick, self(), Msg}),
-    {reply, R, St} ;
+    % Check if server actually exists
+    Server = list_to_atom(Channel),   
+
+    case whereis(Server) of
+        undefined ->
+            {reply, {error, server_not_reached, "server not reached"}, St};
+        _ ->
+            try
+                io:format("we are here"),
+                R = genserver:request(list_to_atom(Channel), {message_send, Channel, St#client_st.nick, self(), Msg}),
+                case R of
+                    %% Handle other unexpected errors
+                    %% TODO: Check if this should always return server_not_reached??
+                    {EXIT, _} ->
+                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
+                    _ ->
+                        io:format("Non Exit response: ~p~n", [R]),
+                        {reply, R, St}
+                end
+            catch
+                %% Catch timeout specifically
+                throw:timeout_error ->
+                    {reply, {error, server_not_reached, "Server times out"}, St}
+            end
+    end;
 
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
