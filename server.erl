@@ -22,27 +22,22 @@ initialChannelState(UserPid) ->
 % Start a new server process with the given name
 % Do not change the signature of this function.
 start(ServerAtom) ->
-    % TODO Implement function
-    % - Spawn a new process which waits for a message, handles it, then loops infinitely
-    % - Register this process to ServerAtom
     genserver:start(ServerAtom, initialServerState(), fun handle/2).
 
+% Terminates all channels
 handle(St, terminate_channels) ->
     lists:foreach(fun(Channel) -> 
         genserver:stop(list_to_atom(Channel))
     end, St#serverstate.channels),
     {reply, ok, St};
 
+% Handle join request
 handle(St, {join, Channel, UserPid}) ->
     case lists:member(Channel, St#serverstate.channels) of
         true -> 
             % Channel already exists,
             % join it!
             R = genserver:request(list_to_atom(Channel), {join, UserPid}), % Send join request to the correct Channel process
-            io:format("Channels1: ~p~n", [St#serverstate.channels]), % This will be one iteration behind. 
-            io:format("R: ~p~n", [R]), % This will be one iteration behind. 
-             
-
             {reply, R, St};
         false -> 
             % Channel does not exists => create it
@@ -50,15 +45,11 @@ handle(St, {join, Channel, UserPid}) ->
             UpdatedState = St#serverstate{channels = NewChannels}, % Updates state with the new channels
 
             % Start the Channel process and add the UserPid to state
-            S = genserver:start(list_to_atom(Channel), initialChannelState(UserPid), fun channelHandler/2),
-
-            io:format("Channels2: ~p~n", [St#serverstate.channels]), % This will be one iteration behind. 
-            io:format("start: ~p~n", [S]),
-
+            genserver:start(list_to_atom(Channel), initialChannelState(UserPid), fun channelHandler/2),
             {reply, ok, UpdatedState}
     end.
 
-
+% Handle leave request
 channelHandler(St, {leave, UserPid}) ->
     case lists:member(UserPid, St#channelstate.users) of
         true -> 
@@ -66,7 +57,6 @@ channelHandler(St, {leave, UserPid}) ->
             NewUsers = lists:delete(UserPid, St#channelstate.users),
             UpdatedState = St#channelstate{users = NewUsers}, % Update the state with the new user
 
-            io:format("Channel users: ~p~n", [St#channelstate.users]), % This will be one iteration behind. 
             case length(St#channelstate.users) of
                 0 -> 
                     % No users left in the channel, remove it
@@ -80,6 +70,7 @@ channelHandler(St, {leave, UserPid}) ->
             {reply, {error, user_not_joined, "User is not in the channel"}, St}
     end;
 
+% Handle message send request
 channelHandler(St, {join, UserPid}) ->
     case lists:member(UserPid, St#channelstate.users) of
         true -> 
@@ -89,11 +80,10 @@ channelHandler(St, {join, UserPid}) ->
             NewUsers = [UserPid | St#channelstate.users],
             UpdatedState = St#channelstate{users = NewUsers}, % Update the state with the new user
 
-            io:format("Channel users: ~p~n", [St#channelstate.users]), % This will be one iteration behind. 
-            
             {reply, ok, UpdatedState}
     end;
 
+% Handle message send request
 channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->    
     case lists:member(UserPid, St#channelstate.users) of
         true -> 
@@ -103,6 +93,7 @@ channelHandler(St, {message_send, Channel, Nick, UserPid, Msg}) ->
             {reply, {error, user_not_joined, "User is not in the channel"}, St}
     end.
 
+% Broadcast message to all users in the channel
 broadcast_message(Users, Channel, Nick, Msg, SenderPid) ->
     Receivers = lists:delete(SenderPid, Users),
     lists:foreach(fun(User) -> 

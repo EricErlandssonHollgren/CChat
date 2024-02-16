@@ -37,14 +37,7 @@ handle(St, {join, Channel}) ->
         _ ->
             try
                 R = genserver:request(Server, {join, Channel, self()}),
-                case R of
-                    %% Handle other unexpected errors
-                    %% TODO: Check if this should always return server_not_reached??
-                    {EXIT, _} ->
-                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
-                    _ ->
-                        {reply, R, St}
-                end
+                {reply, R, St}
             catch
                 %% Catch timeout specifically
                 throw:timeout_error ->
@@ -64,17 +57,8 @@ handle(St, {leave, Channel}) ->
             {reply, {error, server_not_reached, "server not reached"}, St};
         _ ->
             try
-                io:format("we are here"),
                 R = genserver:request(Server, {leave, self()}),
-                case R of
-                    %% Handle other unexpected errors
-                    %% TODO: Check if this should always return server_not_reached??
-                    {EXIT, _} ->
-                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
-                    _ ->
-                        io:format("Non Exit response: ~p~n", [R]),
-                        {reply, R, St}
-                end
+                {reply, R, St}
             catch
                 %% Catch timeout specifically
                 throw:timeout_error ->
@@ -84,7 +68,6 @@ handle(St, {leave, Channel}) ->
 
 % Sending message (from GUI, to channel)
 handle(St, {message_send, Channel, Msg}) ->
-    % TODO: Implement this function
     % {reply, ok, St} ;
     % Check if server actually exists
     ChannelProcess = list_to_atom(Channel),   
@@ -95,17 +78,9 @@ handle(St, {message_send, Channel, Msg}) ->
             try
                 io:format("we are here"),
                 R = genserver:request(list_to_atom(Channel), {message_send, Channel, St#client_st.nick, self(), Msg}),
-                case R of
-                    %% Handle other unexpected errors
-                    %% TODO: Check if this should always return server_not_reached??
-                    {EXIT, _} ->
-                        {reply, {error, server_not_reached, "Server exited unexpectedly"}, St};
-                    _ ->
-                        io:format("Non Exit response: ~p~n", [R]),
-                        {reply, R, St}
-                end
+                {reply, R, St}
             catch
-                %% Catch timeout specifically
+                % Catch timeout specifically
                 throw:timeout_error ->
                     {reply, {error, server_not_reached, "Server times out"}, St}
             end
