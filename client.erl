@@ -76,7 +76,6 @@ handle(St, {message_send, Channel, Msg}) ->
             {reply, {error, server_not_reached, "server not reached"}, St};
         _ ->
             try
-                io:format("we are here"),
                 R = genserver:request(list_to_atom(Channel), {message_send, Channel, St#client_st.nick, self(), Msg}),
                 {reply, R, St}
             catch
