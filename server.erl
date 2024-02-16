@@ -27,6 +27,12 @@ start(ServerAtom) ->
     % - Register this process to ServerAtom
     genserver:start(ServerAtom, initialServerState(), fun handle/2).
 
+handle(St, terminate_channels) ->
+    lists:foreach(fun(Channel) -> 
+        genserver:stop(list_to_atom(Channel))
+    end, St#serverstate.channels),
+    {reply, ok, St};
+
 handle(St, {join, Channel, UserPid}) ->
     case lists:member(Channel, St#serverstate.channels) of
         true -> 
@@ -106,12 +112,6 @@ broadcast_message(Users, Channel, Nick, Msg, SenderPid) ->
 % Stop the server process registered to the given name,
 % together with any other associated processes
 stop(ServerAtom) ->
-    % TODO Implement function
-    % Return ok
-    Pid = whereis(ServerAtom),
-case Pid of
-    %ett till case som felhanterar
-    undefined -> ok;
-    _ ->
-        genserver:stop(ServerAtom)
-end.
+    genserver:request(ServerAtom, terminate_channels),
+    genserver:stop(ServerAtom).
+

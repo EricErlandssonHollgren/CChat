@@ -87,9 +87,8 @@ handle(St, {message_send, Channel, Msg}) ->
     % TODO: Implement this function
     % {reply, ok, St} ;
     % Check if server actually exists
-    Server = list_to_atom(Channel),   
-
-    case whereis(Server) of
+    ChannelProcess = list_to_atom(Channel),   
+    case whereis(ChannelProcess) of
         undefined ->
             {reply, {error, server_not_reached, "server not reached"}, St};
         _ ->
@@ -111,7 +110,8 @@ handle(St, {message_send, Channel, Msg}) ->
                     {reply, {error, server_not_reached, "Server times out"}, St}
             end
     end;
-
+    
+    
 % This case is only relevant for the distinction assignment!
 % Change nick (no check, local only)
 handle(St, {nick, NewNick}) ->
